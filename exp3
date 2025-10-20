@@ -1,0 +1,57 @@
+// server.js
+const express = require('express');
+const http = require('http');
+const cors = require('cors');
+const { Server } = require('socket.io');
+
+const app = express();
+app.use(cors());
+app.use(express.json());
+
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: '*', // during development allow all origins; in production restrict origins
+    methods: ['GET', 'POST']
+  }
+});
+
+// Simple HTTP route (optional)
+app.get('/', (req, res) => {
+  res.send('Socket.io chat server is running.');
+});
+
+io.on('connection', (socket) => {
+  console.log(`Socket connected: ${socket.id}`);
+
+  // handle join room (optional), we'll use a shared room 'main'
+  socket.join('main');
+  io.to('main').emit('systemMessage', `${socket.id} joined the chat`);
+
+  // notify client of successful connection (optional)
+  socket.emit('connected', { socketId: socket.id });
+
+  // handle incoming chat messages
+  socket.on('chatMessage', (payload) => {
+    // payload should include { name, message, timestamp? }
+    const message = {
+      id: new Date().getTime() + '-' + Math.random().toString(36).slice(2, 9),
+      name: payload.name || 'Anonymous',
+      message: payload.message || '',
+      timestamp: payload.timestamp || Date.now(),
+    };
+
+    // broadcast to everyone in 'main' including sender
+    io.to('main').emit('message', message);
+  });
+
+  socket.on('disconnect', (reason) => {
+    console.log(`Socket disconnected: ${socket.id} (${reason})`);
+    io.to('main').emit('systemMessage', `${socket.id} left the chat`);
+  });
+});
+
+const PORT = process.env.PORT || 4000;
+server.listen(PORT, () => {
+  console.log(`Server listening on http://localhost:${PORT}`);
+});
