@@ -1,0 +1,168 @@
+// src/App.js
+import React from "react";
+import { configureStore, createSlice } from "@reduxjs/toolkit";
+import { Provider, useSelector, useDispatch } from "react-redux";
+
+// --- Redux Slice ---
+const cartSlice = createSlice({
+  name: "cart",
+  initialState: { items: [] },
+  reducers: {
+    addItem: (state, action) => {
+      const item = action.payload;
+      const existing = state.items.find((i) => i.id === item.id);
+      if (existing) {
+        existing.quantity += 1;
+      } else {
+        state.items.push({ ...item, quantity: 1 });
+      }
+    },
+    removeItem: (state, action) => {
+      state.items = state.items.filter((item) => item.id !== action.payload);
+    },
+    updateQuantity: (state, action) => {
+      const { id, quantity } = action.payload;
+      const existing = state.items.find((item) => item.id === id);
+      if (existing && quantity > 0) {
+        existing.quantity = quantity;
+      }
+    },
+  },
+});
+
+const { addItem, removeItem, updateQuantity } = cartSlice.actions;
+
+// --- Redux Store ---
+const store = configureStore({
+  reducer: {
+    cart: cartSlice.reducer,
+  },
+});
+
+// --- Components ---
+
+const products = [
+  { id: 1, name: "Laptop", price: 60000 },
+  { id: 2, name: "Headphones", price: 2500 },
+  { id: 3, name: "Smartphone", price: 30000 },
+];
+
+function ProductList() {
+  const dispatch = useDispatch();
+
+  return (
+    <div style={{ marginBottom: "40px" }}>
+      <h2 style={{ fontSize: "22px", fontWeight: "bold" }}>Products</h2>
+      {products.map((product) => (
+        <div
+          key={product.id}
+          style={{
+            margin: "10px 0",
+            padding: "10px",
+            border: "1px solid #ccc",
+            borderRadius: "8px",
+          }}
+        >
+          <strong>{product.name}</strong> - ₹{product.price}
+          <button
+            onClick={() => dispatch(addItem(product))}
+            style={{
+              marginLeft: "10px",
+              backgroundColor: "blue",
+              color: "white",
+              border: "none",
+              padding: "5px 10px",
+              borderRadius: "5px",
+              cursor: "pointer",
+            }}
+          >
+            Add to Cart
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function Cart() {
+  const cartItems = useSelector((state) => state.cart.items);
+  const dispatch = useDispatch();
+
+  const total = cartItems.reduce(
+    (sum, item) => sum + item.price * item.quantity,
+    0
+  );
+
+  return (
+    <div>
+      <h2 style={{ fontSize: "22px", fontWeight: "bold" }}>Shopping Cart</h2>
+      {cartItems.length === 0 ? (
+        <p>Your cart is empty.</p>
+      ) : (
+        <div>
+          {cartItems.map((item) => (
+            <div
+              key={item.id}
+              style={{
+                margin: "10px 0",
+                padding: "10px",
+                border: "1px solid #ccc",
+                borderRadius: "8px",
+              }}
+            >
+              <strong>{item.name}</strong> - ₹{item.price}
+              <br />
+              Quantity:{" "}
+              <input
+                type="number"
+                value={item.quantity}
+                min="1"
+                onChange={(e) =>
+                  dispatch(
+                    updateQuantity({
+                      id: item.id,
+                      quantity: Number(e.target.value),
+                    })
+                  )
+                }
+                style={{ width: "60px", marginLeft: "5px" }}
+              />
+              <button
+                onClick={() => dispatch(removeItem(item.id))}
+                style={{
+                  marginLeft: "10px",
+                  backgroundColor: "red",
+                  color: "white",
+                  border: "none",
+                  padding: "5px 10px",
+                  borderRadius: "5px",
+                  cursor: "pointer",
+                }}
+              >
+                Remove
+              </button>
+            </div>
+          ))}
+          <h3 style={{ marginTop: "15px" }}>Total: ₹{total}</h3>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// --- Main App Component ---
+function App() {
+  return (
+    <Provider store={store}>
+      <div style={{ margin: "40px", fontFamily: "Arial" }}>
+        <h1 style={{ fontSize: "28px", marginBottom: "20px" }}>
+          🛍️ Redux Shopping Cart
+        </h1>
+        <ProductList />
+        <Cart />
+      </div>
+    </Provider>
+  );
+}
+
+export default App;
